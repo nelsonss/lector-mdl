@@ -1,0 +1,837 @@
+{UTF-8}
+********************************************************
+	.1_Trabajo_y_retrabajo
+********************************************************~
+		1 Trabajo y retrabajo
+	|
+
+Funcionalidades Pendientes=
+	INTEG(Llegada de Funcionalidades+Descubrimiento de Defectos-Entrega Correcta-Generacion de Defectos, PENDIENTES INICIALES)
+	~	tarea
+	~	STOCK. Backlog: trabajo nuevo más retrabajo descubierto que espera ser \
+		desarrollado.
+	|
+
+PENDIENTES INICIALES=
+	15.7
+	~	tarea [0,200]
+	~	Backlog al inicio. 15,7 es el valor de equilibrio sin empuje: backlog, \
+		defectos y equipo arrancan en reposo. La deuda no: con la política 0 \
+		crece lentamente (30 a 55 tareas en dos años), aunque su densidad casi \
+		no cambia porque el sistema también crece.
+	|
+
+Funcionalidades Entregadas=
+	INTEG(Entrega Correcta, 0)
+	~	tarea
+	~	STOCK (acumulador). Trabajo terminado sin defectos: valor entregado al \
+		negocio desde la semana 0.
+	|
+
+Defectos No Descubiertos=
+	INTEG(Generacion de Defectos-Descubrimiento de Defectos, DEFECTOS INICIALES)
+	~	tarea
+	~	STOCK. Trabajo que se dio por terminado pero tiene errores ocultos; \
+		volverá al backlog como retrabajo (ciclo de retrabajo).
+	|
+
+DEFECTOS INICIALES=
+	5.1
+	~	tarea [0,50]
+	~	Defectos ocultos al inicio. 5,1 es el valor de equilibrio sin empuje.
+	|
+
+DEMANDA BASE=
+	7
+	~	tarea/Week [0,20]
+	~	Funcionalidades nuevas que pide el negocio cada semana en condiciones \
+		normales.
+	|
+
+AUMENTO DE DEMANDA=
+	0.7
+	~	Dmnl [0,1.5]
+	~	Aumento relativo de la demanda durante el empuje comercial (0,7 = 70 % \
+		más). Con la política 0, el umbral de la trampa está entre 0,58 (el \
+		equipo se recupera) y 0,60 (queda atrapado).
+	|
+
+INICIO DEL EMPUJE=
+	12
+	~	Week [0,100]
+	~	Semana en que empieza el empuje comercial.
+	|
+
+DURACION DEL EMPUJE=
+	26
+	~	Week [0,100]
+	~	Semanas que dura el empuje comercial.
+	|
+
+Llegada de Funcionalidades=
+	DEMANDA BASE*(1+AUMENTO DE DEMANDA*(STEP(1, INICIO DEL EMPUJE)-STEP(1, INICIO DEL EMPUJE+DURACION DEL EMPUJE)))
+	~	tarea/Week
+	~	FLUJO. Demanda de trabajo nuevo: nivel base más un pulso temporal (el \
+		empuje).
+	|
+
+TIEMPO MINIMO DE DESARROLLO=
+	2
+	~	Week [0.5,8]
+	~	Lo mínimo que tarda una tarea en atravesar el flujo de trabajo \
+		(diseño, código, revisión, despliegue).
+	|
+
+Tasa de Desarrollo=
+	MIN(Funcionalidades Pendientes/TIEMPO MINIMO DE DESARROLLO, Capacidad para Funcionalidades/Esfuerzo Relativo por Tarea)
+	~	tarea/Week
+	~	Tareas terminadas por semana (correctas o con defectos). La limita el \
+		trabajo disponible o la capacidad, lo que sea menor.
+	|
+
+Fraccion de Defectos=
+	MIN(0.9, FRACCION DE DEFECTOS BASE*(1+SENSIBILIDAD DEFECTOS A DEUDA*Densidad de Deuda)*(1+SENSIBILIDAD DEFECTOS A PRESION*Exceso de Presion))
+	~	Dmnl
+	~	Fracción del trabajo terminado que sale con defectos ocultos. Sube con \
+		la densidad de deuda y con la presión.
+	|
+
+FRACCION DE DEFECTOS BASE=
+	0.1
+	~	Dmnl [0,0.5]
+	~	Fracción de defectos sin deuda ni presión.
+	|
+
+SENSIBILIDAD DEFECTOS A DEUDA=
+	3
+	~	Dmnl [0,10]
+	~	Aumento relativo de defectos por unidad de densidad de deuda.
+	|
+
+SENSIBILIDAD DEFECTOS A PRESION=
+	0.5
+	~	Dmnl [0,3]
+	~	Aumento relativo de defectos por unidad de exceso de presión.
+	|
+
+Entrega Correcta=
+	Tasa de Desarrollo*(1-Fraccion de Defectos)
+	~	tarea/Week
+	~	FLUJO. Trabajo que sale bien.
+	|
+
+Generacion de Defectos=
+	Tasa de Desarrollo*Fraccion de Defectos
+	~	tarea/Week
+	~	FLUJO. Trabajo que sale con errores ocultos.
+	|
+
+TIEMPO DE DESCUBRIMIENTO=
+	6
+	~	Week [1,26]
+	~	Tiempo medio hasta que un defecto aparece (pruebas, usuarios, \
+		incidentes).
+	|
+
+Descubrimiento de Defectos=
+	Defectos No Descubiertos/TIEMPO DE DESCUBRIMIENTO
+	~	tarea/Week
+	~	FLUJO. Defectos que aparecen y vuelven al backlog como retrabajo.
+	|
+
+********************************************************
+	.2_Presion_y_atajos
+********************************************************~
+		2 Presion y atajos
+	|
+
+PLAZO OBJETIVO=
+	4
+	~	Week [1,12]
+	~	Semanas de trabajo en backlog que el negocio considera aceptables.
+	|
+
+Capacidad Percibida=
+	SMOOTHI(Capacidad para Funcionalidades, TIEMPO DE PERCEPCION, Capacidad*(1-Fraccion de Refactor Deseada))
+	~	tarea/Week
+	~	Capacidad para funcionalidades que el equipo y la gerencia creen \
+		tener: promedio de las últimas semanas. Excluye la parte dedicada a \
+		refactorizar. Se usa SMOOTHI con valor inicial explícito para evitar \
+		un ciclo de inicialización (la refactorización depende de la presión).
+	|
+
+TIEMPO DE PERCEPCION=
+	4
+	~	Week [1,12]
+	~	Retardo con que se percibe la capacidad real.
+	|
+
+Presion de Cronograma=
+	Funcionalidades Pendientes/(Capacidad Percibida*PLAZO OBJETIVO)
+	~	Dmnl
+	~	Backlog dividido entre lo que el equipo cree sacar en el plazo \
+		objetivo. 1 = aceptable; mayor que 1 = el equipo va atrasado.
+	|
+
+PRESION MAXIMA=
+	3
+	~	Dmnl [1,5]
+	~	Tope de la presión efectiva.
+	|
+
+Exceso de Presion=
+	MAX(0, MIN(Presion de Cronograma, PRESION MAXIMA)-1)
+	~	Dmnl
+	~	Cuánto supera la presión el nivel aceptable. Por debajo de 1 vale 0: \
+		un umbral.
+	|
+
+FRACCION DE ATAJOS BASE=
+	0.05
+	~	Dmnl [0,0.5]
+	~	Atajos tomados aun sin presión: deuda inadvertida y erosión normal del \
+		diseño.
+	|
+
+SENSIBILIDAD DE ATAJOS A PRESION=
+	0.3
+	~	Dmnl [0,1]
+	~	Aumento de la fracción de atajos por unidad de exceso de presión: \
+		deuda deliberada.
+	|
+
+Fraccion de Atajos=
+	MIN(0.8, FRACCION DE ATAJOS BASE+SENSIBILIDAD DE ATAJOS A PRESION*Exceso de Presion)
+	~	Dmnl
+	~	Fracción del trabajo hecho 'rápido y sucio'.
+	|
+
+AHORRO POR ATAJO=
+	0.5
+	~	Dmnl [0,0.9]
+	~	Esfuerzo que se ahorra en una tarea hecha con atajo (0,5 = la mitad).
+	|
+
+Esfuerzo Relativo por Tarea=
+	1-Fraccion de Atajos*AHORRO POR ATAJO
+	~	Dmnl
+	~	Esfuerzo medio por tarea frente al normal. Menor que 1: los atajos \
+		aceleran HOY (bucle de alivio B2).
+	|
+
+********************************************************
+	.3_Deuda_tecnica
+********************************************************~
+		3 Deuda tecnica
+	|
+
+Deuda Tecnica=
+	INTEG(Acumulacion de Deuda-Refactorizacion, DEUDA INICIAL)
+	~	tarea
+	~	STOCK. Principal de la deuda: esfuerzo, en tareas, necesario para \
+		dejar el código como debería estar.
+	|
+
+DEUDA INICIAL=
+	30
+	~	tarea [0,500]
+	~	Deuda heredada al inicio (densidad inicial del 3 %).
+	|
+
+DEUDA POR ATAJO=
+	0.6
+	~	Dmnl [0,2]
+	~	Tareas de deuda que deja cada tarea hecha con atajo.
+	|
+
+Acumulacion de Deuda=
+	Tasa de Desarrollo*Fraccion de Atajos*DEUDA POR ATAJO
+	~	tarea/Week
+	~	FLUJO. Deuda nueva que entra con cada atajo.
+	|
+
+TAMANO INICIAL DEL SISTEMA=
+	1000
+	~	tarea [100,5000]
+	~	Tamaño del sistema existente, en tareas equivalentes.
+	|
+
+Tamano del Sistema=
+	TAMANO INICIAL DEL SISTEMA+Funcionalidades Entregadas
+	~	tarea
+	~	Código base total. Supuesto simplificador: el código nuevo sin atajos \
+		es limpio y 'diluye' la deuda.
+	|
+
+Densidad de Deuda=
+	Deuda Tecnica/Tamano del Sistema
+	~	Dmnl
+	~	Deuda por unidad de sistema. Es lo que estorba al trabajar.
+	|
+
+SENSIBILIDAD PRODUCTIVIDAD A DEUDA=
+	8
+	~	Dmnl [0,20]
+	~	Intensidad del 'interés' de la deuda: cuánto frena al equipo cada \
+		unidad de densidad.
+	|
+
+Efecto de la Deuda en Productividad=
+	1/(1+SENSIBILIDAD PRODUCTIVIDAD A DEUDA*Densidad de Deuda)
+	~	Dmnl
+	~	Multiplicador de productividad: 1 = sin freno; 0,5 = todo cuesta el \
+		doble. Con densidad 0,03 vale 0,81.
+	|
+
+POLITICA DE REFACTOR=
+	0
+	~	Dmnl [0,2,1]
+	~	0 = no se refactoriza. 1 = se dedica una fracción fija de la \
+		capacidad. 2 = se busca una densidad de deuda objetivo (búsqueda de \
+		objetivo).
+	|
+
+FRACCION REFACTOR FIJA=
+	0.15
+	~	Dmnl [0,0.5]
+	~	Política 1: fracción de la capacidad que se quiere dedicar a \
+		refactorizar. El pago real nunca supera Deuda Tecnica/TIEMPO MINIMO DE \
+		REFACTOR: con poca deuda, parte de esa fracción queda libre para \
+		funcionalidades.
+	|
+
+DENSIDAD OBJETIVO=
+	0.02
+	~	Dmnl [0,0.2]
+	~	Política 2: densidad de deuda que el equipo quiere mantener.
+	|
+
+GANANCIA DE REFACTOR=
+	8
+	~	Dmnl [0,20]
+	~	Política 2: fracción de capacidad asignada por unidad de exceso de \
+		densidad sobre el objetivo.
+	|
+
+Fraccion de Refactor Deseada=
+	IF THEN ELSE(POLITICA DE REFACTOR=1, FRACCION REFACTOR FIJA, IF THEN ELSE(POLITICA DE REFACTOR=2, MIN(0.5, MAX(0, GANANCIA DE REFACTOR*(Densidad de Deuda-DENSIDAD OBJETIVO))), 0))
+	~	Dmnl
+	~	Fracción de capacidad que la política quiere dedicar a pagar deuda.
+	|
+
+RECORTE DE REFACTOR POR PRESION=
+	1
+	~	Dmnl [0,1]
+	~	0 = la refactorización se protege. 1 = bajo presión se sacrifica ('no \
+		hay tiempo para afilar el hacha').
+	|
+
+Fraccion de Refactor=
+	Fraccion de Refactor Deseada/(1+RECORTE DE REFACTOR POR PRESION*Exceso de Presion)
+	~	Dmnl
+	~	Fracción de capacidad que realmente se dedica a refactorizar, tras el \
+		posible recorte por presión.
+	|
+
+TIEMPO MINIMO DE REFACTOR=
+	4
+	~	Week [1,26]
+	~	Tiempo mínimo para pagar la deuda existente: limita la refactorización \
+		a Deuda/4 por semana.
+	|
+
+Refactorizacion=
+	MIN(Capacidad*Fraccion de Refactor, Deuda Tecnica/TIEMPO MINIMO DE REFACTOR)
+	~	tarea/Week
+	~	FLUJO. Deuda que se paga por semana.
+	|
+
+Capacidad para Funcionalidades=
+	Capacidad-Refactorizacion
+	~	tarea/Week
+	~	Capacidad que queda para trabajo nuevo y retrabajo, después de \
+		refactorizar.
+	|
+
+********************************************************
+	.4_Equipo_y_ley_de_Brooks
+********************************************************~
+		4 Equipo y ley de Brooks
+	|
+
+Personal Novato=
+	INTEG(Contratacion-Asimilacion, NOVATOS INICIALES)
+	~	persona
+	~	STOCK. Personas recién llegadas que aún no dominan el sistema.
+	|
+
+NOVATOS INICIALES=
+	0.36
+	~	persona [0,10]
+	~	Novatos al inicio. 0,36 es el equilibrio de reemplazar la rotación \
+		(personas-equivalentes en promedio).
+	|
+
+Personal Experimentado=
+	INTEG(Asimilacion-Rotacion, PERSONAL INICIAL)
+	~	persona
+	~	STOCK. Conocimiento del equipo: personas que ya dominan el sistema.
+	|
+
+PERSONAL INICIAL=
+	10
+	~	persona [1,50]
+	~	Personal experimentado al inicio.
+	|
+
+Personal Total=
+	Personal Novato+Personal Experimentado
+	~	persona
+	~	Tamaño del equipo.
+	|
+
+POLITICA DE CONTRATACION=
+	0
+	~	Dmnl [0,1,1]
+	~	0 = solo se reemplaza a quien se va. 1 = se contrata más gente cuando \
+		hay presión (activa la ley de Brooks).
+	|
+
+SENSIBILIDAD DE CONTRATACION=
+	1
+	~	Dmnl [0,2]
+	~	Política 1: personal adicional deseado, relativo al equipo inicial, \
+		por unidad de exceso de presión.
+	|
+
+Personal Deseado=
+	(PERSONAL INICIAL+NOVATOS INICIALES)*(1+POLITICA DE CONTRATACION*SENSIBILIDAD DE CONTRATACION*Exceso de Presion)
+	~	persona
+	~	Tamaño de equipo que la gerencia quiere. Supuesto: no hay despidos; si \
+		sobra gente, el equipo solo se achica por rotación.
+	|
+
+TIEMPO DE CONTRATACION=
+	4
+	~	Week [1,12]
+	~	Tiempo para cerrar una brecha de personal.
+	|
+
+Contratacion=
+	MAX(0, Rotacion+(Personal Deseado-Personal Total)/TIEMPO DE CONTRATACION)
+	~	persona/Week
+	~	FLUJO. Ingresos al equipo: se repone a quien se va y se cierra la \
+		brecha con el personal deseado (anclaje y ajuste).
+	|
+
+TIEMPO DE ASIMILACION=
+	12
+	~	Week [2,52]
+	~	Tiempo medio para que un novato domine el sistema.
+	|
+
+Asimilacion=
+	Personal Novato/TIEMPO DE ASIMILACION
+	~	persona/Week
+	~	FLUJO. Novatos que se vuelven experimentados: el conocimiento se \
+		construye con tiempo.
+	|
+
+FRACCION DE ROTACION=
+	0.003
+	~	1/Week [0,0.05]
+	~	Fracción del personal experimentado que se va cada semana (0,003 = \
+		unos 15 % al año).
+	|
+
+Rotacion=
+	Personal Experimentado*FRACCION DE ROTACION
+	~	persona/Week
+	~	FLUJO. Salida de conocimiento del equipo.
+	|
+
+PRODUCTIVIDAD RELATIVA NOVATO=
+	0.2
+	~	Dmnl [0,1]
+	~	Productividad de un novato frente a un experimentado.
+	|
+
+FRACCION DE MENTORIA=
+	0.4
+	~	Dmnl [0,1]
+	~	Tiempo de un experimentado que consume cada novato en entrenamiento.
+	|
+
+Personas Efectivas=
+	MAX(0, Personal Experimentado+Personal Novato*(PRODUCTIVIDAD RELATIVA NOVATO-FRACCION DE MENTORIA))
+	~	persona
+	~	Equivalente en personas experimentadas, descontando la mentoría. Cada \
+		novato aporta 0,2 y consume 0,4 de un experto: resta 0,2 mientras sea \
+		novato. Primer argumento de Brooks.
+	|
+
+COSTO DE COMUNICACION=
+	0.015
+	~	1/persona [0,0.05]
+	~	Fracción de tiempo que cada persona dedica a coordinarse, por cada \
+		persona del equipo (incluida ella misma, como aproximación). Segundo \
+		argumento de Brooks.
+	|
+
+Sobrecarga de Comunicacion=
+	MIN(0.6, COSTO DE COMUNICACION*Personal Total)
+	~	Dmnl
+	~	Fracción del tiempo que se va en coordinarse; crece con el tamaño del \
+		equipo.
+	|
+
+PRODUCTIVIDAD BASE=
+	1.42
+	~	tarea/(persona*Week) [0.1,5]
+	~	Tareas por persona experimentada y por semana, sin deuda ni \
+		sobrecarga.
+	|
+
+Capacidad=
+	Personas Efectivas*PRODUCTIVIDAD BASE*(1-Sobrecarga de Comunicacion)*Efecto de la Deuda en Productividad
+	~	tarea/Week
+	~	Capacidad real de trabajo del equipo (antes de repartirla entre \
+		refactorizar y funcionalidades).
+	|
+
+********************************************************
+	.5_Indicadores
+********************************************************~
+		5 Indicadores
+	|
+
+Esfuerzo Acumulado=
+	INTEG(Esfuerzo Semanal, 0)
+	~	persona*Week
+	~	STOCK (acumulador). Personas-semana pagadas desde el inicio: el costo \
+		de la política.
+	|
+
+Esfuerzo Semanal=
+	Personal Total
+	~	persona
+	~	FLUJO. Personas pagadas esta semana (persona-semana por semana).
+	|
+
+Productividad por Persona=
+	Capacidad/Personal Total
+	~	tarea/(persona*Week)
+	~	Indicador: cuánto rinde cada persona del equipo esta semana.
+	~	:SUPPLEMENTARY
+	|
+
+Eficiencia Acumulada=
+	ZIDZ(Funcionalidades Entregadas, Esfuerzo Acumulado)
+	~	tarea/(persona*Week)
+	~	Indicador: tareas correctas entregadas por persona-semana pagada desde \
+		el inicio. Compárelo solo entre políticas con la misma demanda y junto \
+		con el estado final (backlog, defectos y deuda): no descuenta lo que \
+		queda pendiente.
+	~	:SUPPLEMENTARY
+	|
+
+Fraccion de Retrabajo=
+	ZIDZ(Descubrimiento de Defectos, Tasa de Desarrollo)
+	~	Dmnl
+	~	Indicador: parte del trabajo de la semana que corresponde a rehacer \
+		defectos descubiertos (aproximación).
+	~	:SUPPLEMENTARY
+	|
+
+********************************************************
+	.Control
+********************************************************~
+		Control
+	|
+
+FINAL TIME=
+	104
+	~	Week
+	~	Dos años.
+	|
+
+INITIAL TIME=
+	0
+	~	Week
+	~	Inicio de la simulación.
+	|
+
+SAVEPER=
+	1
+	~	Week [0,?]
+	~	Frecuencia de guardado.
+	|
+
+TIME STEP=
+	0.125
+	~	Week [0,?]
+	~	Paso de integración. Pruebe 0,0625: los resultados no deben cambiar.
+	|
+
+\\\---/// Sketch information - do not modify anything except names
+V300  Do not put anything below this section - it will be ignored
+*1 Trabajo y retrabajo
+$192-192-192,0,Arial|13||0-0-0|0-0-0|0-0-255|-1--1--1|-1--1--1|96,96,90,0
+10,1,Funcionalidades Pendientes,525,229,65,26,3,3,0,0,0,0,0,0
+10,2,Funcionalidades Entregadas,1050,229,65,26,3,3,0,0,0,0,0,0
+10,3,Defectos No Descubiertos,525,517,56,26,3,3,0,0,0,0,0,0
+12,4,48,87,229,10,8,0,3,0,0,-1,0,0,0
+1,5,7,1,4,0,0,22,0,0,0,-1--1--1,,1|(406,229)|
+1,6,7,4,100,0,0,22,0,0,0,-1--1--1,,1|(187,229)|
+11,7,48,287,229,6,8,34,3,0,0,1,0,0,0
+10,8,Llegada de Funcionalidades,287,264,98,12,40,3,0,0,-1,0,0,0
+1,9,11,2,4,0,0,22,0,0,0,-1--1--1,,1|(918,229)|
+1,10,11,1,100,0,0,22,0,0,0,-1--1--1,,1|(656,229)|
+11,11,48,787,229,6,8,34,3,0,0,1,0,0,0
+10,12,Entrega Correcta,787,264,64,12,40,3,0,0,-1,0,0,0
+1,13,15,3,4,0,0,22,0,0,0,-1--1--1,,1|(562,445)|
+1,14,15,1,100,0,0,22,0,0,0,-1--1--1,,1|(562,301)|
+11,15,48,562,373,8,6,33,3,0,0,4,0,0,0
+10,16,Generacion de Defectos,706,373,84,12,40,3,0,0,-1,0,0,0
+1,17,19,1,4,0,0,22,0,0,0,-1--1--1,,1|(487,301)|
+1,18,19,3,100,0,0,22,0,0,0,-1--1--1,,1|(487,445)|
+11,19,48,487,373,8,6,33,3,0,0,4,0,0,0
+10,20,Descubrimiento de Defectos,325,373,98,12,40,3,0,0,-1,0,0,0
+10,21,DEMANDA BASE,100,126,59,12,8,3,0,0,0,0,0,0
+10,22,AUMENTO DE DEMANDA,287,69,84,12,8,3,0,0,0,0,0,0
+10,23,INICIO DEL EMPUJE,500,69,79,12,8,3,0,0,0,0,0,0
+10,24,DURACION DEL EMPUJE,712,69,88,12,8,3,0,0,0,0,0,0
+10,25,PENDIENTES INICIALES,750,149,95,12,8,3,0,0,0,0,0,0
+10,26,Tasa de Desarrollo,987,368,70,12,8,3,0,0,0,0,0,0
+10,27,TIEMPO MINIMO DE DESARROLLO,1262,287,73,22,8,3,0,0,0,0,0,0
+10,28,Fraccion de Defectos,825,529,77,12,8,3,0,0,0,0,0,0
+10,29,FRACCION DE DEFECTOS BASE,1112,586,68,22,8,3,0,0,0,0,0,0
+10,30,SENSIBILIDAD DEFECTOS A DEUDA,825,667,77,22,8,3,0,0,0,0,0,0
+10,31,SENSIBILIDAD DEFECTOS A PRESION,1112,517,82,22,8,3,0,0,0,0,0,0
+10,32,TIEMPO DE DESCUBRIMIENTO,212,517,67,22,8,3,0,0,0,0,0,0
+10,33,DEFECTOS INICIALES,375,644,86,12,8,3,0,0,0,0,0,0
+10,34,Capacidad para Funcionalidades,1262,448,71,22,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+10,35,Esfuerzo Relativo por Tarea,1262,368,66,22,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+10,36,Densidad de Deuda,575,690,73,12,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+10,37,Exceso de Presion,1100,454,73,12,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+1,38,25,1,1,0,0,0,0,64,1,-1--1--1,,1|(637,189)|
+1,39,33,3,1,0,0,0,0,64,1,-1--1--1,,1|(450,580)|
+1,40,22,8,1,0,0,0,0,64,0,-1--1--1,,1|(287,166)|
+1,41,21,8,1,0,0,0,0,64,0,-1--1--1,,1|(193,195)|
+1,42,24,8,1,0,0,0,0,64,0,-1--1--1,,1|(499,166)|
+1,43,23,8,1,0,0,0,0,64,0,-1--1--1,,1|(393,166)|
+1,44,28,12,1,0,0,0,0,64,0,-1--1--1,,1|(806,396)|
+1,45,26,12,1,0,0,0,0,64,0,-1--1--1,,1|(887,316)|
+1,46,28,16,1,0,0,0,0,64,0,-1--1--1,,1|(765,451)|
+1,47,26,16,1,0,0,0,0,64,0,-1--1--1,,1|(846,370)|
+1,48,3,20,1,0,0,0,0,64,0,-1--1--1,,1|(425,445)|
+1,49,32,20,1,0,0,0,0,64,0,-1--1--1,,1|(268,445)|
+1,50,34,26,1,0,0,0,0,64,0,-1--1--1,,1|(1124,408)|
+1,51,35,26,1,0,0,0,0,64,0,-1--1--1,,1|(1124,368)|
+1,52,1,26,1,0,0,0,0,64,0,-1--1--1,,1|(756,298)|
+1,53,27,26,1,0,0,0,0,64,0,-1--1--1,,1|(1124,327)|
+1,54,36,28,1,0,0,0,0,64,0,-1--1--1,,1|(700,609)|
+1,55,37,28,1,0,0,0,0,64,0,-1--1--1,,1|(962,491)|
+1,56,29,28,1,0,0,0,0,64,0,-1--1--1,,1|(968,557)|
+1,57,30,28,1,0,0,0,0,64,0,-1--1--1,,1|(825,598)|
+1,58,31,28,1,0,0,0,0,64,0,-1--1--1,,1|(968,523)|
+12,59,0,425,862,350,17,8,7,0,0,-1,0,0,0,0,0,0,0,0,0
+Vista 1 de 5. Capas 1 y 3: backlog, trabajo entregado y defectos ocultos que vuelven como retrabajo (ciclo de retrabajo).
+12,60,0,193,736,143,25,8,7,0,0,-1,0,0,0,0,0,0,0,0,0
+Ciclo de retrabajo: lo que sale con defectos vuelve al backlog unas 6 semanas despues.
+\\\---/// Sketch information - do not modify anything except names
+V300  Do not put anything below this section - it will be ignored
+*2 Presion y atajos
+$192-192-192,0,Arial|13||0-0-0|0-0-0|0-0-255|-1--1--1|-1--1--1|96,96,90,0
+10,1,Presion de Cronograma,550,229,80,12,8,3,0,0,0,0,0,0
+10,2,PLAZO OBJETIVO,550,103,68,12,8,3,0,0,0,0,0,0
+10,3,Capacidad Percibida,875,229,75,12,8,3,0,0,0,0,0,0
+10,4,TIEMPO DE PERCEPCION,875,103,93,12,8,3,0,0,0,0,0,0
+10,5,Exceso de Presion,550,368,66,12,8,3,0,0,0,0,0,0
+10,6,PRESION MAXIMA,287,368,68,12,8,3,0,0,0,0,0,0
+10,7,Fraccion de Atajos,550,517,70,12,8,3,0,0,0,0,0,0
+10,8,FRACCION DE ATAJOS BASE,287,494,64,22,8,3,0,0,0,0,0,0
+10,9,SENSIBILIDAD DE ATAJOS A PRESION,287,575,83,22,8,3,0,0,0,0,0,0
+10,10,Esfuerzo Relativo por Tarea,875,517,101,12,8,3,0,0,0,0,0,0
+10,11,AHORRO POR ATAJO,875,621,75,12,8,3,0,0,0,0,0,0
+10,12,Funcionalidades Pendientes,250,229,65,22,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+10,13,Capacidad para Funcionalidades,1200,229,71,22,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+10,14,Capacidad,1200,126,47,12,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+10,15,Fraccion de Refactor Deseada,1200,333,67,22,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+1,16,3,1,1,0,0,0,0,64,0,-1--1--1,,1|(712,229)|
+1,17,12,1,1,0,0,0,0,64,0,-1--1--1,,1|(400,229)|
+1,18,2,1,1,0,0,0,0,64,0,-1--1--1,,1|(550,166)|
+1,19,14,3,1,0,0,0,0,64,0,-1--1--1,,1|(1037,177)|
+1,20,13,3,1,0,0,0,0,64,0,-1--1--1,,1|(1037,229)|
+1,21,15,3,1,0,0,0,0,64,0,-1--1--1,,1|(1037,281)|
+1,22,4,3,1,0,0,0,0,64,0,-1--1--1,,1|(875,166)|
+1,23,6,5,1,0,0,0,0,64,0,-1--1--1,,1|(418,368)|
+1,24,1,5,1,0,0,0,0,64,0,-1--1--1,,1|(550,298)|
+1,25,5,7,1,0,0,0,0,64,0,-1--1--1,,1|(550,442)|
+1,26,8,7,1,0,0,0,0,64,0,-1--1--1,,1|(418,505)|
+1,27,9,7,1,0,0,0,0,64,0,-1--1--1,,1|(418,546)|
+1,28,11,10,1,0,0,0,0,64,0,-1--1--1,,1|(875,569)|
+1,29,7,10,1,0,0,0,0,64,0,-1--1--1,,1|(712,517)|
+12,30,0,375,736,275,25,8,7,0,0,-1,0,0,0,0,0,0,0,0,0
+Vista 2 de 5. Capas 3 y 4: la presion de cronograma dispara los atajos. B2 (alivio): el atajo reduce el esfuerzo y baja la presion esta semana. R1 (espiral de la deuda) se cierra en la vista 3.
+12,31,0,1012,379,137,17,8,7,0,0,-1,0,0,0,0,0,0,0,0,0
+Umbral: por debajo de presion 1, el exceso vale 0 y no hay atajos extra.
+\\\---/// Sketch information - do not modify anything except names
+V300  Do not put anything below this section - it will be ignored
+*3 Deuda tecnica
+$192-192-192,0,Arial|13||0-0-0|0-0-0|0-0-255|-1--1--1|-1--1--1|96,96,90,0
+10,1,Deuda Tecnica,525,345,56,26,3,3,0,0,0,0,0,0
+12,2,48,100,345,10,8,0,3,0,0,-1,0,0,0
+1,3,5,1,4,0,0,22,0,0,0,-1--1--1,,1|(412,345)|
+1,4,5,2,100,0,0,22,0,0,0,-1--1--1,,1|(200,345)|
+11,5,48,300,345,6,8,34,3,0,0,1,0,0,0
+10,6,Acumulacion de Deuda,300,377,77,12,40,3,0,0,-1,0,0,0
+12,7,48,987,345,10,8,0,3,0,0,-1,0,0,0
+1,8,10,7,4,0,0,22,0,0,0,-1--1--1,,1|(881,345)|
+1,9,10,1,100,0,0,22,0,0,0,-1--1--1,,1|(650,345)|
+11,10,48,775,345,6,8,34,3,0,0,1,0,0,0
+10,11,Refactorizacion,775,377,61,12,40,3,0,0,-1,0,0,0
+10,12,DEUDA INICIAL,412,459,64,12,8,3,0,0,0,0,0,0
+10,13,DEUDA POR ATAJO,137,459,70,12,8,3,0,0,0,0,0,0
+10,14,Densidad de Deuda,700,195,66,12,8,3,0,0,0,0,0,0
+10,15,Tamano del Sistema,975,195,70,12,8,3,0,0,0,0,0,0
+10,16,TAMANO INICIAL DEL SISTEMA,1225,195,70,22,8,3,0,0,0,0,0,0
+10,17,Efecto de la Deuda en Productividad,700,80,75,22,8,3,0,0,0,0,0,0
+10,18,SENSIBILIDAD PRODUCTIVIDAD A DEUDA,1075,80,88,22,8,3,0,0,0,0,0,0
+10,19,Fraccion de Refactor Deseada,525,598,64,22,8,3,0,0,0,0,0,0
+10,20,POLITICA DE REFACTOR,250,598,93,12,8,3,0,0,0,0,0,0
+10,21,FRACCION REFACTOR FIJA,250,667,102,12,8,3,0,0,0,0,0,0
+10,22,DENSIDAD OBJETIVO,525,701,82,12,8,3,0,0,0,0,0,0
+10,23,GANANCIA DE REFACTOR,250,736,93,12,8,3,0,0,0,0,0,0
+10,24,Fraccion de Refactor,800,517,77,12,8,3,0,0,0,0,0,0
+10,25,RECORTE DE REFACTOR POR PRESION,800,644,80,22,8,3,0,0,0,0,0,0
+10,26,TIEMPO MINIMO DE REFACTOR,975,459,68,22,8,3,0,0,0,0,0,0
+10,27,Capacidad para Funcionalidades,1225,368,68,22,8,3,0,0,0,0,0,0
+10,28,Tasa de Desarrollo,137,229,77,12,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+10,29,Fraccion de Atajos,300,195,77,12,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+10,30,Funcionalidades Entregadas,1225,287,65,22,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+10,31,Capacidad,1225,517,47,12,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+10,32,Exceso de Presion,1075,644,73,12,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+1,33,12,1,1,0,0,0,0,64,1,-1--1--1,,1|(468,402)|
+1,34,13,6,1,0,0,0,0,64,0,-1--1--1,,1|(218,418)|
+1,35,29,6,1,0,0,0,0,64,0,-1--1--1,,1|(300,286)|
+1,36,28,6,1,0,0,0,0,64,0,-1--1--1,,1|(218,303)|
+1,37,31,11,1,0,0,0,0,64,0,-1--1--1,,1|(1008,418)|
+1,38,1,11,1,0,0,0,0,64,0,-1--1--1,,1|(650,361)|
+1,39,24,11,1,0,0,0,0,64,0,-1--1--1,,1|(787,447)|
+1,40,26,11,1,0,0,0,0,64,0,-1--1--1,,1|(875,418)|
+1,41,1,14,1,0,0,0,0,64,0,-1--1--1,,1|(612,270)|
+1,42,15,14,1,0,0,0,0,64,0,-1--1--1,,1|(837,195)|
+1,43,30,15,1,0,0,0,0,64,0,-1--1--1,,1|(1100,241)|
+1,44,16,15,1,0,0,0,0,64,0,-1--1--1,,1|(1100,195)|
+1,45,14,17,1,0,0,0,0,64,0,-1--1--1,,1|(700,137)|
+1,46,18,17,1,0,0,0,0,64,0,-1--1--1,,1|(887,80)|
+1,47,22,19,1,0,0,0,0,64,0,-1--1--1,,1|(525,649)|
+1,48,14,19,1,0,0,0,0,64,0,-1--1--1,,1|(612,396)|
+1,49,21,19,1,0,0,0,0,64,0,-1--1--1,,1|(387,632)|
+1,50,23,19,1,0,0,0,0,64,0,-1--1--1,,1|(387,667)|
+1,51,20,19,1,0,0,0,0,64,0,-1--1--1,,1|(387,598)|
+1,52,32,24,1,0,0,0,0,64,0,-1--1--1,,1|(937,580)|
+1,53,19,24,1,0,0,0,0,64,0,-1--1--1,,1|(662,557)|
+1,54,25,24,1,0,0,0,0,64,0,-1--1--1,,1|(800,580)|
+1,55,31,27,1,0,0,0,0,64,0,-1--1--1,,1|(1225,442)|
+1,56,11,27,1,0,0,0,0,64,0,-1--1--1,,1|(1000,372)|
+12,57,0,387,827,287,25,8,7,0,0,-1,0,0,0,0,0,0,0,0,0
+Vista 3 de 5. Capas 1, 4 y 5: la deuda entra con los atajos y sale solo con refactorizacion. B1: la refactorizacion paga la deuda. R1 (con la vista 2): presion, atajos, deuda, menos capacidad, mas presion.
+12,58,0,656,436,106,12,8,7,0,0,-1,0,0,0,0,0,0,0,0,0
+B1: refactorizar baja la deuda
+\\\---/// Sketch information - do not modify anything except names
+V300  Do not put anything below this section - it will be ignored
+*4 Equipo y ley de Brooks
+$192-192-192,0,Arial|13||0-0-0|0-0-0|0-0-255|-1--1--1|-1--1--1|96,96,90,0
+10,1,Personal Novato,525,299,56,26,3,3,0,0,0,0,0,0
+10,2,Personal Experimentado,1025,299,58,26,3,3,0,0,0,0,0,0
+12,3,48,100,299,10,8,0,3,0,0,-1,0,0,0
+1,4,6,1,4,0,0,22,0,0,0,-1--1--1,,1|(412,299)|
+1,5,6,3,100,0,0,22,0,0,0,-1--1--1,,1|(200,299)|
+11,6,48,300,299,6,8,34,3,0,0,1,0,0,0
+10,7,Contratacion,300,331,51,12,40,3,0,0,-1,0,0,0
+1,8,10,2,4,0,0,22,0,0,0,-1--1--1,,1|(900,299)|
+1,9,10,1,100,0,0,22,0,0,0,-1--1--1,,1|(650,299)|
+11,10,48,775,299,6,8,34,3,0,0,1,0,0,0
+10,11,Asimilacion,775,331,47,12,40,3,0,0,-1,0,0,0
+12,12,48,1437,299,10,8,0,3,0,0,-1,0,0,0
+1,13,15,12,4,0,0,22,0,0,0,-1--1--1,,1|(1343,299)|
+1,14,15,2,100,0,0,22,0,0,0,-1--1--1,,1|(1137,299)|
+11,15,48,1250,299,6,8,34,3,0,0,1,0,0,0
+10,16,Rotacion,1250,331,37,12,40,3,0,0,-1,0,0,0
+10,17,NOVATOS INICIALES,525,184,82,12,8,3,0,0,0,0,0,0
+10,18,PERSONAL INICIAL,1025,184,77,12,8,3,0,0,0,0,0,0
+10,19,Personal Deseado,300,149,64,12,8,3,0,0,0,0,0,0
+10,20,POLITICA DE CONTRATACION,100,103,67,22,8,3,0,0,0,0,0,0
+10,21,SENSIBILIDAD DE CONTRATACION,100,172,76,22,8,3,0,0,0,0,0,0
+10,22,TIEMPO DE CONTRATACION,300,436,102,12,8,3,0,0,0,0,0,0
+10,23,TIEMPO DE ASIMILACION,775,436,97,12,8,3,0,0,0,0,0,0
+10,24,FRACCION DE ROTACION,1250,436,93,12,8,3,0,0,0,0,0,0
+10,25,Personal Total,775,540,57,12,8,3,0,0,0,0,0,0
+10,26,Personas Efectivas,1025,540,71,12,8,3,0,0,0,0,0,0
+10,27,PRODUCTIVIDAD RELATIVA NOVATO,525,644,78,22,8,3,0,0,0,0,0,0
+10,28,FRACCION DE MENTORIA,775,667,93,12,8,3,0,0,0,0,0,0
+10,29,Sobrecarga de Comunicacion,1250,540,98,12,8,3,0,0,0,0,0,0
+10,30,COSTO DE COMUNICACION,1475,482,97,12,8,3,0,0,0,0,0,0
+10,31,PRODUCTIVIDAD BASE,1475,644,86,12,8,3,0,0,0,0,0,0
+10,32,Capacidad,1250,667,40,12,8,3,0,0,0,0,0,0
+10,33,Exceso de Presion,300,46,73,12,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+10,34,Efecto de la Deuda en Productividad,1025,736,78,22,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+1,35,17,1,1,0,0,0,0,64,1,-1--1--1,,1|(525,241)|
+1,36,18,2,1,0,0,0,0,64,1,-1--1--1,,1|(1025,241)|
+1,37,19,7,1,0,0,0,0,64,0,-1--1--1,,1|(300,240)|
+1,38,25,7,1,0,0,0,0,64,0,-1--1--1,,1|(537,435)|
+1,39,16,7,1,0,0,0,0,64,0,-1--1--1,,1|(775,361)|
+1,40,22,7,1,0,0,0,0,64,0,-1--1--1,,1|(300,383)|
+1,41,1,11,1,0,0,0,0,64,0,-1--1--1,,1|(650,315)|
+1,42,23,11,1,0,0,0,0,64,0,-1--1--1,,1|(775,383)|
+1,43,24,16,1,0,0,0,0,64,0,-1--1--1,,1|(1250,383)|
+1,44,2,16,1,0,0,0,0,64,0,-1--1--1,,1|(1137,315)|
+1,45,33,19,1,0,0,0,0,64,0,-1--1--1,,1|(300,97)|
+1,46,17,19,1,0,0,0,0,64,0,-1--1--1,,1|(412,166)|
+1,47,18,19,1,0,0,0,0,64,0,-1--1--1,,1|(662,166)|
+1,48,20,19,1,0,0,0,0,64,0,-1--1--1,,1|(200,126)|
+1,49,21,19,1,0,0,0,0,64,0,-1--1--1,,1|(200,160)|
+1,50,2,25,1,0,0,0,0,64,0,-1--1--1,,1|(920,441)|
+1,51,1,25,1,0,0,0,0,64,0,-1--1--1,,1|(629,441)|
+1,52,28,26,1,0,0,0,0,64,0,-1--1--1,,1|(900,603)|
+1,53,27,26,1,0,0,0,0,64,0,-1--1--1,,1|(775,592)|
+1,54,2,26,1,0,0,0,0,64,0,-1--1--1,,1|(1025,419)|
+1,55,1,26,1,0,0,0,0,64,0,-1--1--1,,1|(831,302)|
+1,56,30,29,1,0,0,0,0,64,0,-1--1--1,,1|(1362,511)|
+1,57,25,29,1,0,0,0,0,64,0,-1--1--1,,1|(1012,570)|
+1,58,34,32,1,0,0,0,0,64,0,-1--1--1,,1|(1137,701)|
+1,59,31,32,1,0,0,0,0,64,0,-1--1--1,,1|(1362,655)|
+1,60,26,32,1,0,0,0,0,64,0,-1--1--1,,1|(1137,603)|
+1,61,29,32,1,0,0,0,0,64,0,-1--1--1,,1|(1250,603)|
+12,62,0,400,827,300,25,8,7,0,0,-1,0,0,0,0,0,0,0,0,0
+Vista 4 de 5. Capas 1, 3 y 5: el conocimiento del equipo vive en el personal experimentado. R2 (Brooks, con la vista 2): presion, contratacion, novatos que restan capacidad, mas presion. A largo plazo la asimilacion lo convierte en un bucle de balance.
+\\\---/// Sketch information - do not modify anything except names
+V300  Do not put anything below this section - it will be ignored
+*5 Indicadores
+$192-192-192,0,Arial|13||0-0-0|0-0-0|0-0-255|-1--1--1|-1--1--1|96,96,90,0
+10,1,Esfuerzo Acumulado,650,229,56,26,3,3,0,0,0,0,0,0
+12,2,48,225,229,10,8,0,3,0,0,-1,0,0,0
+1,3,5,1,4,0,0,22,0,0,0,-1--1--1,,1|(537,229)|
+1,4,5,2,100,0,0,22,0,0,0,-1--1--1,,1|(325,229)|
+11,5,48,425,229,6,8,34,3,0,0,1,0,0,0
+10,6,Esfuerzo Semanal,425,262,64,12,40,3,0,0,-1,0,0,0
+10,7,Eficiencia Acumulada,950,229,78,12,8,3,0,0,0,0,0,0
+10,8,Productividad por Persona,650,459,94,12,8,3,0,0,0,0,0,0
+10,9,Fraccion de Retrabajo,1075,482,80,12,8,3,0,0,0,0,0,0
+10,10,Personal Total,425,103,64,12,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+10,11,Funcionalidades Entregadas,950,103,65,22,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+10,12,Capacidad,425,459,47,12,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+10,13,Descubrimiento de Defectos,1075,379,64,22,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+10,14,Tasa de Desarrollo,1300,482,77,12,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128
+1,15,10,6,1,0,0,0,0,64,0,-1--1--1,,1|(425,182)|
+1,16,1,7,1,0,0,0,0,64,0,-1--1--1,,1|(800,229)|
+1,17,11,7,1,0,0,0,0,64,0,-1--1--1,,1|(950,166)|
+1,18,12,8,1,0,0,0,0,64,0,-1--1--1,,1|(537,459)|
+1,19,10,8,1,0,0,0,0,64,0,-1--1--1,,1|(537,281)|
+1,20,13,9,1,0,0,0,0,64,0,-1--1--1,,1|(1075,430)|
+1,21,14,9,1,0,0,0,0,64,0,-1--1--1,,1|(1187,482)|
+12,22,0,425,621,325,17,8,7,0,0,-1,0,0,0,0,0,0,0,0,0
+Vista 5 de 5. Para comparar politicas: Funcionalidades Entregadas mide el valor; Esfuerzo Acumulado, el costo; Eficiencia Acumulada, las dos cosas a la vez.
+///---\\\

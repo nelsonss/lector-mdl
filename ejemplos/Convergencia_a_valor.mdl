@@ -1,0 +1,135 @@
+{UTF-8}
+********************************************************
+	.Estructura
+********************************************************~
+		Arquetipo de busqueda de objetivo (convergencia a un valor de referencia).
+	|
+
+STOCK= INTEG (ENTRADA-SALIDA,
+		STOCK INICIAL)
+	~	unidades
+	~	Nivel que se quiere mantener cerca de la referencia (temperatura, \
+		recurso renovable, inventario...).
+	|
+
+STOCK INICIAL=1000
+	~	unidades [0,4000]
+	~	Valor inicial del stock. Pruebe valores por debajo y por encima de la \
+		referencia.
+	|
+
+REFERENCIA DE STOCK=2000
+	~	unidades [0,4000]
+	~	Nivel deseado u objetivo del stock.
+	|
+
+ERROR=REFERENCIA DE STOCK-STOCK
+	~	unidades
+	~	Desfase entre lo deseado y lo que hay. Positivo: falta stock. \
+		Negativo: sobra stock.
+	|
+
+TASA DE ENTRADA=0.2
+	~	1/Day [0,1]
+	~	Fraccion del error que se corrige cada dia (en la diapositiva, 0,2). \
+		Su inverso es el tiempo de ajuste: 1/0,2 = 5 dias.
+	|
+
+AJUSTE POR ERROR=TASA DE ENTRADA*ERROR
+	~	unidades/Day
+	~	Correccion proporcional al desfase: ENTRADA(t) = 0,2 * ERROR(t) en la \
+		diapositiva.
+	|
+
+ESTRATEGIA DE CONTROL=1
+	~	Dmnl [1,2,1]
+	~	1 = solo ajuste proporcional (como la diapositiva): el stock se \
+		estabiliza por debajo de la referencia. 2 = ajuste mas reposicion de lo \
+		que sale: el stock alcanza la referencia.
+	|
+
+REPOSICION DE SALIDA=IF THEN ELSE(ESTRATEGIA DE CONTROL=2, SALIDA, 0)
+	~	unidades/Day
+	~	Con la estrategia 2, la entrada repone primero lo que se pierde por la \
+		salida y luego corrige el error.
+	|
+
+ENTRADA=MAX(0, REPOSICION DE SALIDA+AJUSTE POR ERROR)
+	~	unidades/Day
+	~	Flujo de entrada. MAX(0, ...) impide una entrada negativa: si sobra \
+		stock, la entrada se cierra y solo actua la salida.
+	|
+
+TASA DE SALIDA=0.1
+	~	1/Day [0,1]
+	~	Fraccion del stock que se pierde cada dia (en la diapositiva, 0,1).
+	|
+
+SALIDA=TASA DE SALIDA*STOCK
+	~	unidades/Day
+	~	Perdida proporcional al stock: SALIDA(t) = 0,1 * STOCK(t).
+	|
+
+********************************************************
+	.Control
+********************************************************~
+		Simulation Control Parameters
+	|
+
+FINAL TIME  = 50
+	~	Day
+	~	The final time for the simulation.
+	|
+
+INITIAL TIME  = 0
+	~	Day
+	~	The initial time for the simulation.
+	|
+
+SAVEPER  = 0.5
+	~	Day [0,?]
+	~	The frequency with which output is stored.
+	|
+
+TIME STEP  = 0.125
+	~	Day [0,?]
+	~	The time step for the simulation.
+	|
+
+\\\---/// Sketch information - do not modify anything except names
+V300  Do not put anything below this section - it will be ignored
+*Convergencia
+$192-192-192,0,Times New Roman|14||0-0-0|0-0-0|0-0-255|-1--1--1|-1--1--1|96,96,100,0
+10,1,STOCK,640,300,45,25,3,3,0,0,0,0,0,0
+12,2,48,300,300,10,8,0,3,0,0,-1,0,0,0
+1,3,5,1,4,0,0,22,0,0,0,-1--1--1,,1|(530,300)|
+1,4,5,2,100,0,0,22,0,0,0,-1--1--1,,1|(355,300)|
+11,5,48,420,300,6,8,34,3,0,0,1,0,0,0
+10,6,ENTRADA,420,327,32,11,40,3,0,0,-1,0,0,0
+12,7,48,990,300,10,8,0,3,0,0,-1,0,0,0
+1,8,10,7,4,0,0,22,0,0,0,-1--1--1,,1|(930,300)|
+1,9,10,1,100,0,0,22,0,0,0,-1--1--1,,1|(750,300)|
+11,10,48,860,300,6,8,34,3,0,0,1,0,0,0
+10,11,SALIDA,860,327,30,11,40,3,0,0,-1,0,0,0
+10,12,REFERENCIA DE STOCK,520,110,70,11,8,3,0,0,0,0,0,0
+10,13,ERROR,520,190,30,11,8,3,0,0,0,0,0,0
+10,14,TASA DE ENTRADA,200,150,57,11,8,3,0,0,0,0,0,0
+10,15,AJUSTE POR ERROR,330,200,60,11,8,3,0,0,0,0,0,0
+10,16,STOCK INICIAL,720,190,50,11,8,3,0,0,0,0,0,0
+10,17,TASA DE SALIDA,1000,420,53,11,8,3,0,0,0,0,0,0
+10,18,REPOSICION DE SALIDA,640,450,74,11,8,3,0,0,0,0,0,0
+10,19,ESTRATEGIA DE CONTROL,640,530,77,11,8,3,0,0,0,0,0,0
+1,20,12,13,1,0,0,0,0,64,0,-1--1--1,,1|(520,150)|
+1,21,1,13,1,0,0,0,0,64,0,-1--1--1,,1|(590,240)|
+1,22,13,15,1,0,0,0,0,64,0,-1--1--1,,1|(430,185)|
+1,23,14,15,1,0,0,0,0,64,0,-1--1--1,,1|(260,170)|
+1,24,15,6,1,0,0,0,0,64,0,-1--1--1,,1|(370,265)|
+1,25,16,1,1,0,0,0,0,64,1,-1--1--1,,1|(690,240)|
+1,26,1,11,1,0,0,0,0,64,0,-1--1--1,,1|(760,360)|
+1,27,17,11,1,0,0,0,0,64,0,-1--1--1,,1|(940,380)|
+1,28,11,18,1,0,0,0,0,64,0,-1--1--1,,1|(760,420)|
+1,29,19,18,1,0,0,0,0,64,0,-1--1--1,,1|(640,490)|
+1,30,18,6,1,0,0,0,0,64,0,-1--1--1,,1|(520,410)|
+12,31,0,190,470,150,40,8,7,0,0,-1,0,0,0
+B1: el error abre la entrada hasta cerrar el desfase
+///---\\\
